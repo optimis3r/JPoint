@@ -186,7 +186,3 @@ This happens when a trailing slash is passed to `-XX:HeapDumpPath=/tmp/dumps/`. 
 Ensure `/tmp/dumps` exists and that `-Xmx` was set low enough to trigger an `OutOfMemoryError` during execution.
 
 ---
-
-## License
-
-MIT
