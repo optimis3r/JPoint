@@ -1,0 +1,5 @@
+redis
+minio
+zstandard
+beautifulsoup4
+requests

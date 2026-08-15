@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- NOTE: Usually we keep branding and feature bundle version in sync, but we can't increase the major version -->
+<feature
+      id="org.eclipse.help"
+      label="%featureName"
+      version="2.3.2600.v20260601-0713"
+      provider-name="%providerName"
+      plugin="org.eclipse.help.base">
+
+   <description>
+      %description
+   </description>
+
+   <copyright>
+      %copyright
+   </copyright>
+
+   <license url="%licenseURL">
+      %license
+   </license>
+
+   <plugin
+         id="org.eclipse.equinox.http.jetty"
+         version="3.9.700.v20260513-0740"/>
+
+   <plugin
+         id="org.eclipse.equinox.http.registry"
+         version="1.4.400.v20250611-0943"/>
+
+   <plugin
+         id="org.eclipse.equinox.http.servlet"
+         version="1.8.600.v20251111-0344"/>
+
+   <plugin
+         id="org.eclipse.equinox.jsp.jasper"
+         version="1.2.400.v20250720-1532"/>
+
+   <plugin
+         id="org.eclipse.equinox.jsp.jasper.registry"
+         version="1.3.300.v20250807-0756"/>
+
+   <plugin
+         id="org.eclipse.help.base"
+         version="4.6.100.v20260601-0713"/>
+
+   <plugin
+         id="org.eclipse.help.ui"
+         version="4.8.400.v20260420-1303"/>
+
+   <plugin
+         id="org.eclipse.help.webapp"
+         version="3.12.500.v20260326-0937"/>
+
+   <plugin
+         id="org.eclipse.core.net"
+         version="1.5.900.v20260507-0401"/>
+
+   <plugin
+         id="org.eclipse.equinox.security"
+         version="1.4.700.v20250622-1644"/>
+
+</feature>

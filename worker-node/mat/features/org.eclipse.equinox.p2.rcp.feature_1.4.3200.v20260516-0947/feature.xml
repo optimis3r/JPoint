@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="org.eclipse.equinox.p2.rcp.feature"
+      label="%featureName"
+      version="1.4.3200.v20260516-0947"
+      provider-name="%providerName">
+
+   <description>
+      %description
+   </description>
+
+   <copyright>
+      %copyright
+   </copyright>
+
+   <license url="%licenseURL">
+      %license
+   </license>
+
+   <includes
+         id="org.eclipse.equinox.p2.core.feature"
+         version="1.7.1100.v20260516-0947"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.ui"
+         version="2.9.100.v20260502-0558"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.ui.sdk.scheduler"
+         version="1.7.100.v20260304-0653"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.updatechecker"
+         version="1.4.600.v20250728-0401"/>
+
+   <plugin
+         id="org.eclipse.equinox.security.ui"
+         version="1.4.700.v20251111-0659"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.ui.sdk"
+         version="1.4.100.v20260307-0501"/>
+
+</feature>

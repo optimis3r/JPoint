@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="org.eclipse.equinox.p2.core.feature"
+      label="%featureName"
+      version="1.7.1100.v20260516-0947"
+      provider-name="%providerName">
+
+   <description>
+      %description
+   </description>
+
+   <copyright>
+      %copyright
+   </copyright>
+
+   <license url="%licenseURL">
+      %license
+   </license>
+
+   <requires>
+      <import plugin="org.eclipse.ecf.provider.filetransfer.httpclient5" version="1.1.0" match="compatible"/>
+      <import filter="(osgi.os=win32)" plugin="org.eclipse.ecf.provider.filetransfer.httpclient5.win32" version="1.1.0" match="compatible"/>
+      <import plugin="org.eclipse.ecf.provider.filetransfer.httpclientjava" version="2.1.0" match="compatible"/>
+   </requires>
+
+   <plugin
+         id="org.eclipse.equinox.p2.artifact.repository"
+         version="1.5.900.v20260319-1254"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.console"
+         version="1.3.700.v20250515-0507"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.core"
+         version="2.13.300.v20260108-1444"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.director"
+         version="2.6.900.v20260512-1529"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.engine"
+         version="2.11.100.v20260512-1529"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.garbagecollector"
+         version="1.3.700.v20250715-0459"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.metadata"
+         version="2.9.700.v20260516-0947"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.metadata.repository"
+         version="1.5.800.v20260304-1232"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.repository"
+         version="2.9.700.v20260316-0549"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.touchpoint.eclipse"
+         version="2.4.600.v20250722-0413"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.touchpoint.natives"
+         version="1.5.900.v20260304-0711"/>
+
+   <plugin
+         id="org.eclipse.equinox.simpleconfigurator.manipulator"
+         version="2.3.700.v20260306-0556"/>
+
+   <plugin
+         id="org.eclipse.equinox.frameworkadmin"
+         version="2.3.600.v20260306-0554"/>
+
+   <plugin
+         id="org.eclipse.equinox.frameworkadmin.equinox"
+         version="1.3.400.v20250515-0513"/>
+
+   <plugin
+         id="org.eclipse.equinox.preferences"
+         version="3.12.100.v20251111-0704"/>
+
+   <plugin
+         id="org.eclipse.equinox.security"
+         version="1.4.700.v20250622-1644"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.jarprocessor"
+         version="1.3.700.v20260304-1232"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.transport.ecf"
+         version="1.4.700.v20260304-0651"/>
+
+   <plugin
+         id="org.eclipse.equinox.p2.operations"
+         version="2.7.800.v20260304-0655"/>
+
+   <plugin
+         id="org.eclipse.equinox.security.macosx"
+         os="macosx"
+         version="1.102.500.v20250521-0414"/>
+
+   <plugin
+         id="org.eclipse.equinox.security.linux"
+         os="linux"
+         version="1.1.400.v20250521-0415"/>
+
+   <plugin
+         id="org.eclipse.equinox.security.win32"
+         os="win32"
+         version="1.3.0.v20240419-2334"/>
+
+   <plugin
+         id="org.eclipse.equinox.concurrent"
+         version="1.3.500.v20260307-0016"/>
+
+</feature>

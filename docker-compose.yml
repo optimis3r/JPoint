@@ -1,0 +1,50 @@
+version: '3.8'
+
+# 3 major components (minIO, Redis, Jaeger)
+services:
+  # MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: jpoint-minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password123
+    ports:
+      - "9000:9000" # API port
+      - "9001:9001" # Web UI port
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  redis:
+    image: redis:alpine
+    container_name: jpoint-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jpoint-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686" # Web UI port
+      - "4317:4317" # OTLP gRPC reciever
+      - "4318:4318" # OTLP HTTP reciever
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: jpoint-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=jpoint-redis
+    depends_on:
+      - redis
+      - minio
+
+volumes:
+  minio_data:
+  redis_data:

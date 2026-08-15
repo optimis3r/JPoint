@@ -1,0 +1,43 @@
+# sensitive data
+.env
+.end.local
+*.pem
+*.key
+secrets/
+
+# jvm heapdumps and captures
+*.hprof
+*.zst
+/tmp/dumps/
+/tmp/*.hprof
+/tmp/*.zst
+
+# ecliplse mat artifacts
+*_extracted/
+*_Leak_Suspects.zip
+*_Leak_Suspects.html
+*.zip
+
+# python
+__pycache__/
+*.pd[cod]
+*$py.class
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# next / node js
+node_modules/
+.next/
+out/
+build/
+dist/
+.npm
+.DS_Store
+
+# docker
+minio_data/
+redis_data/
