@@ -17,49 +17,37 @@ An automated heap dump processor and memory leak analyzer for Java applications.
 ## Architecture
 
 ```mermaid
-flowchart TD
-    subgraph Capture["Capture Layer (Java App)"]
-        JVM["JVM (-XX:+HeapDumpOnOutOfMemoryError)"]
-        HPROF["Heap Dump (/tmp/dumps/*.hprof)"]
-        SCRIPT["upload_script.sh (zstd)"]
-        
-        JVM -->|OOM Crash| HPROF
-        HPROF -->|Compress & Stream| SCRIPT
+flowchart LR
+    subgraph Step1["1. Crash & Capture"]
+        direction TB
+        App["Java Application"] -->|OOM Crash| Dump["/tmp/dumps/*.hprof"]
+        Dump -->|zstd compress| Script["upload_script.sh"]
     end
 
-    subgraph Stack["Docker Stack"]
-        MINIO["MinIO Object Storage"]
-        GATEWAY["FastAPI Gateway (Port 8000)"]
-        REDIS["Redis Broker"]
-        JAEGER["Jaeger Tracing"]
-        
-        SCRIPT -->|Upload .hprof.zst| MINIO
-        SCRIPT -->|POST Webhook| GATEWAY
-        GATEWAY -->|Push Job| REDIS
-        GATEWAY -->|Traces| JAEGER
+    subgraph Step2["2. Ingestion & Storage"]
+        direction TB
+        Script -->|Upload Dump| MinIO[("MinIO Storage")]
+        Script -->|HTTP Webhook| Gateway["FastAPI Gateway"]
+        Gateway -->|Enqueue Job| Redis[("Redis Queue")]
     end
 
-    subgraph Worker["Worker Node"]
-        WORKER_PY["worker.py"]
-        MAT["Eclipse MAT (ParseHeapDump.sh)"]
-        BS4["BeautifulSoup4 Parser"]
-        GH["GitHub API"]
-        
-        REDIS -->|Pop Job| WORKER_PY
-        WORKER_PY -->|Fetch & Decompress| MINIO
-        WORKER_PY -->|Run Analysis| MAT
-        MAT -->|Extract HTML| BS4
-        WORKER_PY -->|Fetch Commit Author| GH
-        WORKER_PY -->|Save _report.json| MINIO
+    subgraph Step3["3. Processing & Analysis"]
+        direction TB
+        Redis -->|Pop Job| Worker["Python Worker"]
+        Worker -->|Run MAT CLI| MAT["Eclipse MAT Engine"]
+        Worker -->|Fetch Commit Blame| GitHub["GitHub API"]
+        Worker -->|Save JSON Report| MinIO
     end
 
-    subgraph UI["Dashboard"]
-        NEXT["Next.js App (Port 3000)"]
-        D3["D3.js Force Graph"]
-        
-        NEXT -->|Read Reports| MINIO
-        NEXT -->|Render Graph| D3
+    subgraph Step4["4. Visualization"]
+        direction TB
+        MinIO -->|Fetch Reports| NextJS["Next.js Dashboard"]
+        NextJS -->|Render Physics Graph| D3["D3.js Force Graph"]
     end
+
+    Step1 --> Step2
+    Step2 --> Step3
+    Step3 --> Step4
 ```
 
 ---
