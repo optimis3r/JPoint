@@ -9,6 +9,8 @@ services:
     environment:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=password123
+      - MINIO_NOTIFY_WEBHOOK_ENABLE_PRIMARY=on
+      - MINIO_NOTIFY_WEBHOOK_ENDPOINT_PRIMARY=http://api-gateway:8000/api/v1/webhooks/minio
     ports:
       - "9000:9000" # API port
       - "9001:9001" # Web UI port

@@ -1,57 +1,61 @@
-import { NextResponse } from "next/server";
-import * as Minio from 'minio';
+import { NextResponse } from 'next/server';
+import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
-const minioClient = new Minio.Client({
-    endPoint: 'localhost',
-    port: 9000,
-    useSSL: false,
-    accessKey: 'admin',
-    secretKey: 'password123',
+// Configure S3 client to point to local MinIO
+const s3Client = new S3Client({
+  region: 'us-east-1',
+  endpoint: 'http://localhost:9000',
+  forcePathStyle: true,
+  credentials: {
+    accessKeyId: 'admin',
+    secretAccessKey: 'password123',
+  },
 });
 
-const BUCKET_NAME = 'jpoint-raw-dumps';
-
 export async function GET() {
-    try {
-        const bucketExists = await minioClient.bucketExists(BUCKET_NAME);
-        if(!bucketExists) {
-            console.error(`[!] Bucket '${BUCKET_NAME}' does not exist.`);
-            return NextResponse.json({ error: "Bucket not found" }, { status: 404 });
-        }
+  const bucketName = 'jpoint-raw-dumps';
 
-        const objectKeys: string[] = [];
-        const stream = minioClient.listObjects(BUCKET_NAME, '', true);
+  try {
+    const listCommand = new ListObjectsV2Command({ Bucket: bucketName });
+    const listedObjects = await s3Client.send(listCommand);
 
-        await new Promise((resolve, reject)=> {
-            stream.on('data', (obj) => {
-                if(obj.name && obj.name.endsWith('_report.json')) {
-                    objectKeys.push(obj.name);
-                }
-            });
-            stream.on('end', resolve);
-            stream.on('error', reject);
+    if (!listedObjects.Contents || listedObjects.Contents.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    // Filter only files ending with _report.json
+    const reportObjects = listedObjects.Contents.filter((obj) => 
+      obj.Key && obj.Key.endsWith('_report.json')
+    );
+
+    // Fetch and parse each report JSON file from MinIO
+    const reports = await Promise.all(
+      reportObjects.map(async (obj) => {
+        const getCommand = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: obj.Key,
         });
-
-        const reports: any[] = [];
-        for (const key of objectKeys) {
-            try {
-                const dataStream = await minioClient.getObject(BUCKET_NAME, key);
-                let data = '';
-                for await (const chunk of dataStream) {
-                    data += chunk;
-                }
-                reports.push(JSON.parse(data));
-            } catch (parseError) {
-                console.error(`[!] Failed to parse report ${key}:`, parseError);
-            }
+        const response = await s3Client.send(getCommand);
+        const bodyString = await response.Body?.transformToString();
+        const data = bodyString ? JSON.parse(bodyString) : null;
+        if (data) {
+          data.lastModified = obj.LastModified ? new Date(obj.LastModified).toISOString() : null;
         }
+        return data;
+      })
+    );
 
-        return NextResponse.json(reports);
-    
-    } catch (error) {
-        console.error("\n[!] MINIO FETCH ERROR:");
-        console.error(error);
-        console.error("-------------------\n");
-        return NextResponse.json({ error: "Failed to connect to MinIO" }, { status: 500 });
-    } 
+    // Filter out any nulls and sort by newest first (LastModified desc)
+    const validReports = reports.filter(Boolean);
+    validReports.sort((a, b) => {
+      const timeA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+      const timeB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return NextResponse.json(validReports);
+  } catch (error) {
+    console.error('Error fetching reports from MinIO:', error);
+    return NextResponse.json({ error: 'Failed to fetch telemetry reports' }, { status: 500 });
+  }
 }

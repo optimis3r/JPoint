@@ -1,6 +1,7 @@
 import redis
 import json
 import sys
+sys.stdout.reconfigure(line_buffering=True)
 import os
 import subprocess
 import zipfile
@@ -12,6 +13,10 @@ import re
 import requests
 from minio import Minio
 import zstandard as zstd
+from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # github config
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -221,10 +226,22 @@ while True:
                 for suspect in suspects_data:
                     target_blame_class = None
                     for cls in suspect["suspectClasses"]:
-                        if not cls.startswith("java.") and not cls.startswith("jdk."):
-                            target_blame_class = cls.replace("[]", "")
+                        # CLEANUP: Strip out line numbers (e.g., :27), arrays ([]), primitives, and java internals
+                        base_cls = cls.split(".java")[0].split(":")[0]
+                        
+                        if (
+                            base_cls 
+                            and not base_cls.startswith("java.") 
+                            and not base_cls.startswith("jdk.") 
+                            and not base_cls.startswith("sun.")
+                            and base_cls not in ["byte", "int", "long", "char", "boolean", "short", "float", "double", "Object", "String"]
+                            and not "[]" in base_cls
+                            and not "/" in base_cls
+                        ):
+                            target_blame_class = base_cls.strip()
                             break
                     
+                    print(f"[*] Target clean class for Git Blame: {target_blame_class}")
                     git_blame = fetch_git_blame(target_blame_class) if target_blame_class else None
                     
                     enriched_suspects.append({
@@ -240,6 +257,7 @@ while True:
                     "traceId": job['traceId'],
                     "targetFile": f"{job['bucket']}/{job['objectKey']}",
                     "status": "COMPLETED",
+                    "timestamp": job.get('timestamp') or (datetime.utcnow().isoformat() + "Z"),
                     "leakSuspects": enriched_suspects
                 }
 

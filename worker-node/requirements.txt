@@ -3,3 +3,4 @@ minio
 zstandard
 beautifulsoup4
 requests
+python-dotenv

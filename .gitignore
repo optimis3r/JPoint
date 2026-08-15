@@ -1,43 +1,81 @@
-# sensitive data
+# Environment & Secret files
 .env
-.end.local
+.env.*
+.env.local
+.env.development
+.env.production
 *.pem
 *.key
 secrets/
+**/.env*
 
-# jvm heapdumps and captures
+# Runtime PID & Log files
+*.pid
+.worker.pid
+.frontend.pid
+*.log
+worker.log
+frontend.log
+
+# Java & Compiler Artifacts
+*.class
+*.jar
+*.war
+*.ear
+capture-layer/*.class
+
+# JVM Heapdumps & Captures
 *.hprof
 *.zst
 /tmp/dumps/
 /tmp/*.hprof
 /tmp/*.zst
 
-# ecliplse mat artifacts
+# Eclipse MAT Analysis Artifacts
 *_extracted/
 *_Leak_Suspects.zip
 *_Leak_Suspects.html
 *.zip
+*.index
+*.inb
+*.o2d
+*.threads
+*.domts.bin
+*.a2s.bin
+worker-node/workspace/
 
-# python
+# Python Virtualenvs & Caches
 __pycache__/
-*.pd[cod]
+*.py[cod]
 *$py.class
 venv/
 env/
 .venv/
+api-gateway/venv/
+worker-node/venv/
 *.egg-info/
 dist/
 build/
 
-# next / node js
+# Node.js & Next.js Build Artifacts
 node_modules/
+frontend/node_modules/
 .next/
+frontend/.next/
 out/
-build/
-dist/
 .npm
-.DS_Store
+*.tsbuildinfo
+frontend/*.tsbuildinfo
+next-env.d.ts
 
-# docker
+# Docker Volume Mount Directories
 minio_data/
 redis_data/
+
+# IDE & OS Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
