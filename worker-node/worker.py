@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# github config
+# GitHub config
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_OWNER = "optimis3r"
 GITHUB_REPO = "JPoint"
@@ -27,7 +27,7 @@ GITHUB_HEADERS = {
     "Accept": "application/vnd.github.v3+json"
 }
 
-# Connect to our local Dockerized Redis with explicit socket keepalive and timeout settings
+# Connect Redis
 try:
     redis_client = redis.Redis(
         host='127.0.0.1', 
@@ -35,15 +35,15 @@ try:
         db=0, 
         decode_responses=True,
         socket_keepalive=True,
-        socket_timeout=None  # Disable default blocking timeouts on the socket itself
+        socket_timeout=None
     )
-    # Ping Redis to test the connection immediately
     redis_client.ping()
     print("[*] Successfully connected to Redis broker!")
 except Exception as e:
     print(f"[!] Failed to connect to Redis: {e}")
     sys.exit(1)
 
+# Connect MinIO
 try:
     minio_client = Minio(
         "127.0.0.1:9000",
@@ -51,18 +51,14 @@ try:
         secret_key="password123",
         secure=False
     )
-
     print("[*] Successfully connected to MinIO")
 except Exception as e:
     print(f"[!] Failed to connect to MinIO: {e}")
 
-
 QUEUE_NAME = "jpoint_parse_queue"
 print(f"[*] Worker Node booted up. Listening to '{QUEUE_NAME}'...")
 
-
 def fetch_git_blame(class_name):
-    """ searches github for the class file and last commit"""
     print(f"[*] Investigating Git history for class: {class_name}")
 
     try:
@@ -74,13 +70,11 @@ def fetch_git_blame(class_name):
         search_data = search_res.json()
 
         if search_data.get("total_count", 0) == 0:
-            print(f"[!] Could not find {class_name}.java in the repository.")
+            print(f"[!] Could not find {class_name}.java in repository.")
             return None
 
         file_path = search_data["items"][0]["path"]
-        print(f"[*] Found file at: {file_path}")
 
-        # get last commit of that file
         commits_url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/commits"
         commits_res = requests.get(commits_url, headers=GITHUB_HEADERS, params={"path": file_path, "per_page": 1})
         commits_res.raise_for_status()
@@ -101,12 +95,12 @@ def fetch_git_blame(class_name):
         }
 
     except Exception as e:
-        print(f"[!] Github API Error: {e}")
+        print(f"[!] GitHub API Error: {e}")
         return None
 
+# Worker loop
 while True:
     try:
-        # timeout=0 means block indefinitely until a job appears
         result = redis_client.brpop(QUEUE_NAME, timeout=0)
         
         if result:
@@ -118,31 +112,28 @@ while True:
                 continue
             
             print("\n" + "="*50)
-            print(f"New Job Recieved: {job['jobId']}")
+            print(f"New Job Received: {job['jobId']}")
             print(f"Trace ID: {job['traceId']}")
             print(f"Target File: {job['bucket']}/{job['objectKey']}")
             print("="*50 + "\n")
 
-            # setup local file path
             compressed_file_path = f"/tmp/{job['jobId']}.hprof.zst"
             raw_hprof_path = f"/tmp/{job['jobId']}.hprof"
 
-            # download from MinIO
+            # Download MinIO
             print(f"[*] Downloading {job['objectKey']} from MinIO...")
             minio_client.fget_object(job['bucket'], job['objectKey'], compressed_file_path)
 
-            # stream-decompress the file
+            # Decompress zstd
             with open(compressed_file_path, 'rb') as compressed_file:
                 dctx = zstd.ZstdDecompressor()
                 with open(raw_hprof_path, 'wb') as raw_file:
                     dctx.copy_stream(compressed_file, raw_file)
 
-            print(f"[*] Success! Raw dump ready at: {raw_hprof_path}")
-
             os.remove(compressed_file_path)
 
-            # execute eclipse Mat
-            print("[*] Firing up Eclipse MAT Headless Parser...")
+            # Run MAT
+            print("[*] Running Eclipse MAT Parser...")
 
             mat_script_path = os.path.join(os.getcwd(), "mat", "ParseHeapDump.sh")
 
@@ -155,19 +146,12 @@ while True:
             if process.returncode == 0:
                 print("[*] MAT Analysis Complete")
                 expected_zip_path = raw_hprof_path.replace(".hprof", "_Leak_Suspects.zip")
-
-                print("[*] Unzipping MAT report...")
                 extract_dir = raw_hprof_path.replace(".hprof", "_extracted")
 
                 with zipfile.ZipFile(expected_zip_path, 'r') as zip_ref:
                     zip_ref.extractall(extract_dir)
 
-                print(f"[*] Extracted to: {extract_dir}")
-
-                # Parse HTML using beautifulSoup
-                print("[*] Parsing MAT HTML report with beautifulsoup...")
-                
-                # Search for HTML files instead of XML
+                # Parse HTML
                 html_files = glob.glob(os.path.join(extract_dir, "**", "*.html"), recursive=True)
 
                 suspects_data = []
@@ -176,19 +160,16 @@ while True:
                     for html_file in html_files:
                         with open(html_file, 'r', encoding='utf-8', errors='ignore') as f:
                             soup = BeautifulSoup(f, 'html.parser')
-
                             clean_text = soup.get_text(separator=" ", strip=True)
 
                             matches = re.finditer(r'Problem Suspect \d+(.*?)Keywords(.*?)(?:Details|Table of Contents)', clean_text, re.IGNORECASE | re.DOTALL)
 
                             for match in matches:
-
                                 raw_description = match.group(1).strip()
 
                                 if "Skip to main content" in raw_description:
-
                                     parts = raw_description.split("Description")
-                                    if(len(parts) > 1):
+                                    if len(parts) > 1:
                                         raw_description = parts[-1].strip()
                                     else:
                                         raw_description = raw_description.split("Problem Suspect")[-1].strip()
@@ -196,7 +177,6 @@ while True:
                                 raw_keywords = match.group(2).strip()
 
                                 classes = [cls for cls in raw_keywords.split() if cls and not cls.startswith('jdk.') and not cls.startswith('sun.')]
-
                                 clean_classes = list(set([c.replace('"', '') for c in classes]))
                                                                     
                                 suspects_data.append({
@@ -214,19 +194,12 @@ while True:
 
                     suspects_data = unique_suspects
 
-                    if not suspects_data:
-                            print("[!] Scanned all HTML files but couldn't find the \"Problem Suspect\"")
-                else:
-                    print("[!] No HTML files found either. Something is very wrong.")
-
-
-                print("[*] Linking Leak Suspects to GitHub Commits...")
+                # Fetch Git blame
                 enriched_suspects = []
                 
                 for suspect in suspects_data:
                     target_blame_class = None
                     for cls in suspect["suspectClasses"]:
-                        # CLEANUP: Strip out line numbers (e.g., :27), arrays ([]), primitives, and java internals
                         base_cls = cls.split(".java")[0].split(":")[0]
                         
                         if (
@@ -235,13 +208,12 @@ while True:
                             and not base_cls.startswith("jdk.") 
                             and not base_cls.startswith("sun.")
                             and base_cls not in ["byte", "int", "long", "char", "boolean", "short", "float", "double", "Object", "String"]
-                            and not "[]" in base_cls
-                            and not "/" in base_cls
+                            and "[]" not in base_cls
+                            and "/" not in base_cls
                         ):
                             target_blame_class = base_cls.strip()
                             break
                     
-                    print(f"[*] Target clean class for Git Blame: {target_blame_class}")
                     git_blame = fetch_git_blame(target_blame_class) if target_blame_class else None
                     
                     enriched_suspects.append({
@@ -251,7 +223,7 @@ while True:
                         "gitBlame": git_blame
                     })
 
-                # package the json
+                # Build artifact
                 final_artifact = {
                     "jobId": job['jobId'],
                     "traceId": job['traceId'],
@@ -261,15 +233,8 @@ while True:
                     "leakSuspects": enriched_suspects
                 }
 
-                print("\n" + "="*25)
-                print("Final json artifact generated:")
-                print(json.dumps(final_artifact, indent=4))
-                print("="*25 + "\n")
-
-                print("[*] Saving structured JSON report back to MinIO...")
-
+                # Upload report
                 report_key = job['objectKey'].replace('.hprof.zst', '_report.json')
-
                 json_bytes = json.dumps(final_artifact, indent=4).encode('utf-8')
                 json_stream = io.BytesIO(json_bytes)
 
@@ -281,16 +246,14 @@ while True:
                     content_type='application/json'
                 )
 
-                print(f"[*] IR Report permanantly stored at: s3://{job['bucket']}/{report_key}")
-                print("[*] Worker node ready for the next job \n")
+                print(f"[*] Report stored at: s3://{job['bucket']}/{report_key}\n")
 
             else:
-                print(f"[!] MAT Analysis Failed, Return Code: {process.returncode}")
-                print(f"[!] MAT Error Output:\n{process.stderr}")
+                print(f"[!] MAT Analysis Failed: {process.stderr}")
             
     except redis.exceptions.ConnectionError:
-        print("[!] Lost connection to Redis. Retrying in 2 seconds...")
+        print("[!] Lost Redis connection. Retrying in 2 seconds...")
         import time
         time.sleep(2)
     except Exception as e:
-        print(f"[!] An error occurred: {e}")
+        print(f"[!] Error: {e}")

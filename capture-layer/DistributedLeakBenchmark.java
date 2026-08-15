@@ -6,17 +6,12 @@ import java.util.concurrent.*;
 
 public class DistributedLeakBenchmark {
 
-    // Evasive Leak Vector 1: Weakly keyed cache mapping to heavily retained internal graph nodes
     private static final Map<String, ComplexLeakNode> ELUSIVE_CACHE = new ConcurrentHashMap<>();
-    
-    // Evasive Leak Vector 2: Background daemon thread holding onto thread-local memory references
     private static final ThreadLocal<byte[]> CORRUPTED_THREAD_LOCAL = new ThreadLocal<>();
-    
-    // Evasive Leak Vector 3: Asynchronous task queue accumulating orphaned futures
     private static final Queue<Future<?>> ORPHANED_FUTURE_QUEUE = new ConcurrentLinkedQueue<>();
 
     public static class HeavyPayloadContext {
-        private final byte[] allocationBlob = new byte[1024 * 768]; // 750KB blob
+        private final byte[] allocationBlob = new byte[1024 * 768];
         private final String correlationId = UUID.randomUUID().toString();
     }
 
@@ -30,31 +25,28 @@ public class DistributedLeakBenchmark {
     }
 
     public static void main(String[] args) {
-        System.out.println("🚨 Starting Distributed Leak Benchmark (Hard Mode)...");
+        System.out.println("Starting DistributedLeakBenchmark...");
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(6);
 
-        // Task 1: Flooding the elusive cache with cyclical structure references
+        // Cache flood
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 for (int i = 0; i < 60; i++) {
                     String syntheticKey = "KEY-" + UUID.randomUUID().toString();
                     ELUSIVE_CACHE.put(syntheticKey, new ComplexLeakNode(syntheticKey));
                 }
-            } catch (Throwable t) {
-                // Suppress to keep pressure building
-            }
+            } catch (Throwable t) {}
         }, 0, 50, TimeUnit.MILLISECONDS);
 
-        // Task 2: Thread-local accumulation across asynchronous worker pools
+        // ThreadLocal leak
         ExecutorService workerPool = Executors.newFixedThreadPool(4);
         for (int i = 0; i < 4; i++) {
             workerPool.submit(() -> {
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
-                        // Accidental permanent allocation in thread-local context
                         byte[] accumulation = CORRUPTED_THREAD_LOCAL.get();
                         if (accumulation == null) {
-                            accumulation = new byte[1024 * 1024 * 2]; // 2MB chunk per thread
+                            accumulation = new byte[1024 * 1024 * 2];
                             CORRUPTED_THREAD_LOCAL.set(accumulation);
                         }
                         Thread.sleep(100);
@@ -65,7 +57,7 @@ public class DistributedLeakBenchmark {
             });
         }
 
-        // Task 3: Spawning orphaned futures that leak task descriptors
+        // Orphaned futures
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 Future<?> future = workerPool.submit(() -> {
@@ -77,7 +69,6 @@ public class DistributedLeakBenchmark {
             } catch (Throwable ignored) {}
         }, 0, 10, TimeUnit.MILLISECONDS);
 
-        // Keep main thread alive until OOM triggers
         try {
             Thread.currentThread().join();
         } catch (InterruptedException e) {

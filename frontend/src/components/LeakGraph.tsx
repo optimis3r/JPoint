@@ -4,9 +4,7 @@ import * as d3 from 'd3';
 
 function formatShortName(fullName: string): string {
   if (!fullName) return 'Unknown Suspect';
-  // Remove method signatures like (Ljava/lang/Object;...)
   let clean = fullName.split('(')[0].trim();
-  // Strip package prefixes if long, retaining Class or Class.method
   const parts = clean.split('.');
   if (parts.length > 2) {
     clean = parts.slice(-2).join('.');
@@ -20,7 +18,7 @@ export default function LeakGraph({ suspects }: { suspects: any[] }) {
   useEffect(() => {
     if (!svgRef.current || !suspects || suspects.length === 0) return;
 
-    // 1. Setup SVG Canvas
+    // SVG canvas
     const width = 600;
     const height = 340;
     const svg = d3.select(svgRef.current)
@@ -31,19 +29,15 @@ export default function LeakGraph({ suspects }: { suspects: any[] }) {
       .style('border-radius', '0.75rem')
       .style('border', '1px solid #1f2937');
 
-    svg.selectAll('*').remove(); // Clear previous renders
+    svg.selectAll('*').remove();
 
-    // 2. Parse Nodes & Proportional Radii
+    // Node setup
     const totalSuspects = suspects.length;
     const suspectNodes = suspects.map((suspect, i) => {
       const match = suspect.description?.match(/occupies ([\d,]+) \(([\d.]+)%\) bytes/);
       const percentage = match ? parseFloat(match[2]) : 25;
       const rawName = suspect.suspectClasses?.[0] || `Suspect-${i + 1}`;
-
-      // Scaled radius between 22px and 44px
       const radius = Math.min(44, Math.max(22, Math.pow(percentage, 0.55) * 3.5 + 12));
-
-      // Initial radial positioning around center at 135px distance
       const angle = (i / Math.max(1, totalSuspects)) * 2 * Math.PI - Math.PI / 2;
       const dist = 135;
 
@@ -69,21 +63,19 @@ export default function LeakGraph({ suspects }: { suspects: any[] }) {
     };
 
     const graphNodes: any[] = [rootNode, ...suspectNodes];
-
-    // 3. Create Links connecting Root Node to Suspect Nodes
     const graphLinks = suspectNodes.map((_, idx) => ({
       source: 0,
       target: idx + 1,
     }));
 
-    // 4. Force Simulation with Radial Orbit & Repulsion
+    // Force simulation
     const simulation = d3.forceSimulation(graphNodes)
       .force('link', d3.forceLink(graphLinks).distance(135).strength(1.0))
       .force('charge', d3.forceManyBody().strength(-600))
       .force('collide', d3.forceCollide().radius((d: any) => d.radius + 25))
       .force('radial', d3.forceRadial((_: any, i: number) => (i === 0 ? 0 : 135), width / 2, height / 2).strength(0.9));
 
-    // 5. Draw Connecting Links (Lines)
+    // Links
     const link = svg.append('g')
       .selectAll('line')
       .data(graphLinks)
@@ -92,14 +84,13 @@ export default function LeakGraph({ suspects }: { suspects: any[] }) {
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', '4,4');
 
-    // 6. Draw Node Groups
+    // Nodes
     const nodeGroup = svg.append('g')
       .selectAll('g')
       .data(graphNodes)
       .join('g')
       .style('cursor', 'pointer');
 
-    // Circles
     nodeGroup.append('circle')
       .attr('r', (d: any) => d.radius)
       .attr('fill', (_, i) => (i === 0 ? '#10b981' : '#f43f5e'))
@@ -107,11 +98,9 @@ export default function LeakGraph({ suspects }: { suspects: any[] }) {
       .attr('stroke-width', 2.5)
       .attr('filter', 'drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.5))');
 
-    // SVG Native Tooltip on Hover
     nodeGroup.append('title')
       .text((d: any) => `${d.id}\nRetained Heap: ${d.percentage}%`);
 
-    // Main Labels (Formatted / Truncated)
     nodeGroup.append('text')
       .text((d: any) => d.shortName)
       .attr('font-size', (d: any, i: number) => (i === 0 ? '12px' : '11px'))
@@ -120,7 +109,6 @@ export default function LeakGraph({ suspects }: { suspects: any[] }) {
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.3em');
 
-    // Percentage Sub-Labels
     nodeGroup.append('text')
       .text((d: any, i: number) => (i === 0 ? 'Root' : `${d.percentage}% Heap`))
       .attr('font-size', '10px')
@@ -129,7 +117,7 @@ export default function LeakGraph({ suspects }: { suspects: any[] }) {
       .attr('text-anchor', 'middle')
       .attr('dy', '1.1em');
 
-    // 7. Simulation Animation Tick
+    // Tick update
     simulation.on('tick', () => {
       link
         .attr('x1', (d: any) => d.source.x)

@@ -1,8 +1,6 @@
 version: '3.8'
 
-# 3 major components (minIO, Redis, Jaeger)
 services:
-  # MinIO
   minio:
     image: minio/minio:latest
     container_name: jpoint-minio
@@ -12,8 +10,8 @@ services:
       - MINIO_NOTIFY_WEBHOOK_ENABLE_PRIMARY=on
       - MINIO_NOTIFY_WEBHOOK_ENDPOINT_PRIMARY=http://api-gateway:8000/api/v1/webhooks/minio
     ports:
-      - "9000:9000" # API port
-      - "9001:9001" # Web UI port
+      - "9000:9000"
+      - "9001:9001"
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
@@ -32,9 +30,9 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     ports:
-      - "16686:16686" # Web UI port
-      - "4317:4317" # OTLP gRPC reciever
-      - "4318:4318" # OTLP HTTP reciever
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
 
   api-gateway:
     build: ./api-gateway

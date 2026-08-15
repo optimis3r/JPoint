@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
-// Configure S3 client to point to local MinIO
+// MinIO client
 const s3Client = new S3Client({
   region: 'us-east-1',
   endpoint: 'http://localhost:9000',
@@ -23,12 +23,11 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    // Filter only files ending with _report.json
     const reportObjects = listedObjects.Contents.filter((obj) => 
       obj.Key && obj.Key.endsWith('_report.json')
     );
 
-    // Fetch and parse each report JSON file from MinIO
+    // Fetch reports
     const reports = await Promise.all(
       reportObjects.map(async (obj) => {
         const getCommand = new GetObjectCommand({
@@ -45,7 +44,7 @@ export async function GET() {
       })
     );
 
-    // Filter out any nulls and sort by newest first (LastModified desc)
+    // Sort newest first
     const validReports = reports.filter(Boolean);
     validReports.sort((a, b) => {
       const timeA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
@@ -55,7 +54,7 @@ export async function GET() {
 
     return NextResponse.json(validReports);
   } catch (error) {
-    console.error('Error fetching reports from MinIO:', error);
+    console.error('Error fetching reports:', error);
     return NextResponse.json({ error: 'Failed to fetch telemetry reports' }, { status: 500 });
   }
 }

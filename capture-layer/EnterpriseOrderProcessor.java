@@ -5,23 +5,21 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class EnterpriseOrderProcessor {
 
-    // The Leak Source: A global static audit ledger that accumulates data indefinitely
     private static final Map<String, OrderTransaction> GLOBAL_AUDIT_LEDGER = new ConcurrentHashMap<>();
     private static final List<AuditPayload> MEMORY_BLOAT_HISTORY = new ArrayList<>();
 
     public static class CustomerProfile {
         private String customerId;
         private String email;
-        private byte[] sessionTokenData; // Inflates heap size
+        private byte[] sessionTokenData;
 
         public CustomerProfile(String customerId, String email) {
             this.customerId = customerId;
             this.email = email;
-            this.sessionTokenData = new byte[1024 * 64]; // 64 KB per profile
+            this.sessionTokenData = new byte[1024 * 64];
         }
     }
 
@@ -40,8 +38,8 @@ public class EnterpriseOrderProcessor {
     }
 
     public static class AuditPayload {
-        private byte[] rawJsonPayload; // 512 KB payload blob
-        private String metadata = "JPoint-Enterprise-Audit-Node-V4";
+        private byte[] rawJsonPayload;
+        private String metadata = "JPoint-Enterprise-Audit-Node";
 
         public AuditPayload() {
             this.rawJsonPayload = new byte[1024 * 512]; 
@@ -49,7 +47,7 @@ public class EnterpriseOrderProcessor {
     }
 
     public static void main(String[] args) {
-        System.out.println("🚀 Starting Enterprise Order Processor Simulator...");
+        System.out.println("Starting EnterpriseOrderProcessor...");
         ExecutorService executor = Executors.newFixedThreadPool(4);
 
         int counter = 0;
@@ -62,21 +60,19 @@ public class EnterpriseOrderProcessor {
                         CustomerProfile profile = new CustomerProfile("CUST-" + batchId, "user_" + batchId + "@enterprise.io");
                         OrderTransaction txn = new OrderTransaction(txId, profile, 1499.99);
 
-                        // Intentionally leaking references into global static structures
                         GLOBAL_AUDIT_LEDGER.put(txId, txn);
                         MEMORY_BLOAT_HISTORY.add(new AuditPayload());
                     }
                 });
 
                 if (batchId % 100 == 0) {
-                    System.out.println("[*] Processed ledger batches: " + batchId + " | Current Ledger Size: " + GLOBAL_AUDIT_LEDGER.size());
-                    Thread.sleep(10); // Short pacing breath
+                    System.out.println("[*] Processed batches: " + batchId + " | Ledger Size: " + GLOBAL_AUDIT_LEDGER.size());
+                    Thread.sleep(10);
                 }
             }
         } catch (Throwable t) {
-            System.err.println("OOM Triggered in Enterprise Order Pipeline!");
+            System.err.println("OOM in EnterpriseOrderProcessor!");
             t.printStackTrace();
-            // Shutdown pool
             executor.shutdownNow();
             throw new Error(t);
         }
