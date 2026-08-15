@@ -1,12 +1,12 @@
 # Project JPoint
 
-An automated heap dump processor and memory leak analyzer for Java applications. When a Java process throws an `OutOfMemoryError`, JPoint compresses the heap dump, runs headless Eclipse MAT analysis, matches leaking classes against Git commit history using Git Blame, and presents the findings on a web dashboard.
+An automated heap dump processor and memory leak analyzer for any Java application (Spring Boot, microservices, or standalone Java apps). When a Java process throws an `OutOfMemoryError`, JPoint compresses the heap dump, runs headless Eclipse MAT analysis, matches leaking classes against Git commit history using Git Blame, and presents the findings on a web dashboard.
 
 ---
 
 ## What It Does
 
-1. **Dump Capture & Compression**: Collects `.hprof` heap dumps from `/tmp/dumps`, stream-compresses them using `zstd`, and uploads them to MinIO.
+1. **Dump Capture & Compression**: Works with any Java app configured with `-XX:+HeapDumpOnOutOfMemoryError`. Collects `.hprof` heap dumps from `/tmp/dumps`, stream-compresses them using `zstd`, and uploads them to MinIO.
 2. **Headless Heap Parsing**: Runs Eclipse Memory Analyzer Tool (MAT) in CLI mode (`org.eclipse.mat.api:suspects`) to identify leak suspects without launching a GUI.
 3. **Git Blame Integration**: Queries the GitHub API for identified leaking classes to find the commit author, commit hash, file path, and commit message responsible for the code.
 4. **Interactive Dashboard**: Displays analysis reports in a Next.js dashboard, including a D3.js force-directed graph showing memory distribution per suspect class.
@@ -20,7 +20,7 @@ An automated heap dump processor and memory leak analyzer for Java applications.
 flowchart LR
     subgraph Step1["1. Crash & Capture"]
         direction TB
-        App["Java Application"] -->|OOM Crash| Dump["/tmp/dumps/*.hprof"]
+        App["Any Java Application\n(Spring Boot, Microservices, etc.)"] -->|OOM Crash| Dump["/tmp/dumps/*.hprof"]
         Dump -->|zstd compress| Script["upload_script.sh"]
     end
 
@@ -54,7 +54,7 @@ flowchart LR
 
 ## Component Overview
 
-* **`capture-layer/`**: Contains benchmark Java classes that trigger memory leaks (`DistributedPipelineCluster.java`, `TenantContextCacheManager.java`, `EnterpriseOrderProcessor.java`, `DistributedLeakBenchmark.java`, `ComplexOOM.java`) and `upload_script.sh` to compress and send dumps to MinIO.
+* **`capture-layer/`**: Contains included benchmark test scenarios (`DistributedPipelineCluster.java`, `TenantContextCacheManager.java`, `EnterpriseOrderProcessor.java`, `DistributedLeakBenchmark.java`, `ComplexOOM.java`) to demonstrate OOM processing, alongside `upload_script.sh` which can be attached to any Java application.
 * **`api-gateway/`**: A FastAPI application that receives upload webhooks, generates job IDs, creates OpenTelemetry spans, and pushes work onto Redis.
 * **`worker-node/`**: A Python background process (`worker.py`) that pops jobs from Redis, decompresses `.zst` files, executes Eclipse MAT CLI, parses the HTML report, fetches Git commit data from GitHub, and writes output JSON files back to MinIO.
 * **`frontend/`**: Next.js 14 web application featuring an S3 API reader route (`src/app/api/reports/route.ts`) and a D3 force-directed visualizer (`src/components/LeakGraph.tsx`).
